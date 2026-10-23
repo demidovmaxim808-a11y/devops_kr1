@@ -25,14 +25,14 @@ if [[ -n "$(git status --porcelain)" ]]; then
     exit 1
 fi
 
-# 3. Синхронизация каталога (без --chmod)
+# 3. Синхронизация каталога
 echo "Синхронизация ${LOCAL_DIR}/ на ${REMOTE}:${REMOTE_DIR}/"
 rsync -avz --delete ${DRY_RUN} "${LOCAL_DIR}/" "${REMOTE}:${REMOTE_DIR}/"
 
-# Если это не dry-run, выставляем права через SSH (потому что macOS rsync не умеет --chmod)
+# Если это не dry-run, выставляем права (без sudo, так как владелец devops)
 if [[ -z "${DRY_RUN}" ]]; then
     echo "Выставление прав 755/644..."
-    ssh ${REMOTE} "sudo find ${REMOTE_DIR} -type d -exec chmod 755 {} + && sudo find ${REMOTE_DIR} -type f -exec chmod 644 {} +"
+    ssh ${REMOTE} "find ${REMOTE_DIR} -type d -exec chmod 755 {} + && find ${REMOTE_DIR} -type f -exec chmod 644 {} +"
 fi
 
 # 4. При --dry-run — завершение с кодом 0
