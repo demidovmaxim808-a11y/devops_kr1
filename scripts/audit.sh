@@ -36,5 +36,21 @@ check "Политика входящего трафика deny" "deny" "$(sudo u
 echo "[3] Учётные записи"
 awk -F: ' $3>=1000 && $3<65534 {printf " %s (uid=%s)\n",$1,$3}' /etc/passwd
 
+echo "[5] Контейнеризация"
+# a) служба docker активна
+check "Служба Docker активна" "active" "$(systemctl is-active docker)"
+
+# б) контейнер СУБД в состоянии healthy
+check "СУБД в состоянии healthy" "healthy" "$(docker inspect -f '{{.State.Health.Status}}' app-db-1 2>/dev/null || echo 'not_found')"
+
+# в) порты 5000 и 5432 не прослушиваются ни на одном адресе, кроме 127.0.0.1
+# Проверяем, есть ли слушающие сокеты на этих портах, кроме локальных
+BAD_PORTS=$(sudo ss -tln | grep -E ':(5000|5432)\s' | grep -v '127.0.0.1' | wc -l | tr -d ' ')
+check "Порты 5000/5432 доступны только локально" "0" "$BAD_PORTS"
+
+# г) права файла ~/app/.env равны 600
+ENV_PERM=$(stat -c '%a' ~/app/.env)
+check "Права .env равны 600" "600" "$ENV_PERM"
+
 echo "Пройдено: $PASS, не пройдено: $FAIL"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
